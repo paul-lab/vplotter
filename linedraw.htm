@@ -1,0 +1,65 @@
+<HTML>
+<HEAD>
+<script>
+
+function pg_update(){
+	//location.reload();
+	//return false;
+	//alert("bet");
+	drw_cont = document.getElementById('drw_cont').value/4;
+	document.getElementById('lbl_drw_cont').innerHTML =drw_cont;
+
+	drw_hatch = document.getElementById('drw_hatch').value;
+	document.getElementById('lbl_drw_hatch').innerHTML =drw_hatch;
+
+	rpt_cont = document.getElementById('rpt_cont').value;
+	document.getElementById('lbl_rpt_cont').innerHTML =rpt_cont;
+
+	rpt_hatch = document.getElementById('rpt_hatch').value;
+	document.getElementById('lbl_rpt_hatch').innerHTML =rpt_hatch;
+
+
+	longstr = "python -O "
+	longstr += " drawcont="+ drw_cont;
+	longstr += " drawhatch="+ drw_hatch;
+	longstr += " repeatcont="+ rpt_cont;
+	longstr += " repeathatch="+ rpt_hatch;
+	document.getElementById('pycmd').value= longstr;
+	//alert(	drw_cont);
+}
+
+</script>
+</HEAD
+<body>
+<table border=1>
+	<tr>
+		<td>Draw<br>
+			<label id="lbl_drw_cont"> &nbsp; &nbsp; &nbsp;</label><input type="range" id="drw_cont" name="vol" min="0" max="12" onchange="pg_update();"><br>
+			<label id="lbl_drw_hatch">-</label><input type="range" id="drw_hatch" name="vol" min="0" max="50" onchange="pg_update();"><br>
+			Repeat<br>
+			<label id="lbl_rpt_cont">-</label><input type="range" id="rpt_cont" name="vol" min="0" max="10"onchange="pg_update();"><br>
+			<label id="lbl_rpt_hatch">-</label><input type="range" id="rpt_hatch" name="vol" min="0" max="10" onchange="pg_update();"><br>
+
+			<input  class="btn" type="submit"  onclick="pg_update();" value="Update" />
+		</td>
+		<td>
+			<img width=320 src="images/snapshot.jpg">
+		</td>
+		<td colspan=2 rowspan=2>
+			<img width=320 src="images/snapshot.svg">
+		</td>
+	</tr>
+	<tr>
+		<td>
+
+		</td>
+		<td>
+			<img  width=320 src="images/snapshot-lines.jpg">
+		</td>
+
+	</tr>
+
+</table>
+<input id=pycmd size=125></input>
+</body>
+</HTML>
