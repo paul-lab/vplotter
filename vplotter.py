@@ -25,7 +25,7 @@
         
     4. If the image is not portrait, then rotate it.
     
-    5. The SVG/NGC file from the images folder is scaled to 90% of the
+    5. The SVG/Gcode file from the images folder is scaled to 90% of the
         selected paper Size and motor step size to fit the entire image
         in the drawing area. I work arse about face with the step size,
         but that is how my head works. It is then:
@@ -45,13 +45,17 @@
         
    10. When run with -O, output will be sent to the Motor Shield to plot
 
+   11. There is very little bounds checking and almost no error trapping
+       I will leave this to you as an exercise.
 
- A few statements:
-     1. An image with a lot of small lines/dots is best suited to a printer, NOT a plotter.
-     2. The best image for a PLOTTER is one with long continuous lines
-     3. Long lines, especially those whe one motor has a small relative movement to the other,
+
+ A few points:
+     1. This is an artistic exercise, not an engineering one.
+     2. An image with a lot of small lines/dots is best suited to a printer, NOT a plotter.
+     3. The best image for a PLOTTER is one with long continuous lines
+     4. Long lines, especially those whe one motor has a small relative movement to the other,
           will curve. 
-     4. Files created for CNC/Etching machines are rarely optimised for plotting,
+     5. Files created for CNC/Etching machines are rarely optimised for plotting,
           and a lot of drawing time can be saved by pre-processing the input file before
           sending it to the plotter. (https://github.com/alsliahona/gcode-optimizer
           is well worth casting an eye over.) 
@@ -135,6 +139,7 @@ Other useful sites
     https://www.raspberrypi.org/blog/plotter-made-from-scrap-computer-parts/
     https://www.lifewire.com/driving-stepper-motors-at-high-speed-818822
     http://www.polargraph.co.uk/
+    http://www.makelangelo.com/
     http://www.practicalagile.uk
     
         
@@ -291,8 +296,20 @@ if not __debug__:
 ################################ Global END  #########################
 ######################################################################
 def drawngc(thisfile):
-    #GCODE ORIGIN is normally bottom left
-        
+    '''
+    A few assumptions are made about the Gcode
+        The unit of measure is mm
+        Absolute coordinate mode is used
+        Only G00, G01, G02, G03, M3 & M5 are acted on. ALL other commands are ignored
+        G0 is always Pen Up, all others draw
+            Unless Explicit Laser OFF (M03)/ON (M05) are taken as Pen UP/DOWN
+        All movement commands must include both X & Y, even if it is 0
+        Z (Depth) is always ignored
+        Only I,J curves are plotted. (the most common)
+            K is ignored as we are plotting on the X&Y plane
+        All Arc (G02 & G03) command must include an end-point
+        Gcode ORIGIN is bottom left (you may end up with morrored/inverted drawings)
+    '''    
     global offsetx, offsety
     global drawing_width, drawing_height
     global lastlen
@@ -319,9 +336,9 @@ def drawngc(thisfile):
         
     fp.close()
     '''
-        run throught the file and find the largest & smallest x & y
+        run through the file and find the largest & smallest x & y
         (image width and height)
-        this really should be done when we are parsing the file
+        This really should be done when we are parsing the file
         but I will leave this to you to refactor
     '''
     image_width = 0.0
@@ -383,8 +400,8 @@ def drawngc(thisfile):
     # plot each drawable line
     x = 0.0
     y = 0.0
-    z = 0.0
-    r = 0.0
+    #z = 0.0
+    #r = 0.0
     i = 0.0
     j = 0.0
     lastx = 0.0
@@ -408,12 +425,12 @@ def drawngc(thisfile):
             elif pkey == "Y":
                 y = (float(p[1:]) + sh) * image_ratio  / stepsize[0]
                 got_xy += 1
-            #elif pkey == "R":
-            #    r = float(p[1:]) * image_ratio       # radius of arc
             elif pkey == "I":
                 i = float(p[1:]) * image_ratio  / stepsize[0]      # x offset to center
             elif pkey == "J":
                 j = float(p[1:]) * image_ratio  / stepsize[0]     # y offset to centre
+            #elif pkey == "R":
+            #    r = float(p[1:]) * image_ratio       # radius of arc
 
 
         # we need at least x & Y for all "G" codes otherwise we just skip the line
@@ -427,7 +444,7 @@ def drawngc(thisfile):
         The pen is UP for moves/fast traverse, othewise it is drawing
         Depending on how/where the G-Code was created, this sometimes adds
         unwanted lines to the drawing. It is worth checking.
-        Explicit Laser OFF/ON are taken as Pen UP/DOWN
+        Explicit Laser OFF/ON are taken as Explicit Pen UP/DOWN
         '''
         if line[0] in("G00", "M05"):    # Jog or explicit laser OFF
             PenUp=True
@@ -460,12 +477,12 @@ def drawngc(thisfile):
                 xy = G01.split(",")
                 plot_pair(float(xy[0]),float(xy[1]))
 
-        # Remember where we ended on the last move.
+        # Remember where we ended on the last move so we can draw an arc if needed.
         lastx = x
         lasty = y             
 
     # al1 the lines done
-    return(image_ratio)
+    return()
         
 def parse_line(line):
     '''
@@ -725,7 +742,7 @@ def drawsvg(thisfile):
                     set_pen_up(False)
     
     # al1 the lines done
-    return(image_ratio)
+    return()
 
 
 def adjust_speed(this_step,thisleg,step_delay,line_segment=False):
@@ -1016,6 +1033,15 @@ def init():
     calibrate()
     
 def hardware_reset():
+    '''
+    Make sure the pen is up so that is it does not bleed onto the paper,
+    also
+    release the motors so that they are not energised.
+    The motors should cope with being energised for a long time,
+        but  if there is no need ....
+    It also allows you to move them and reposition the pen carriage,
+        something you can't do while they are energised.
+    '''
     set_pen_up(True)
     if not __debug__:
         kit.stepper1.release()
@@ -1285,31 +1311,31 @@ def main():
     ooy = offsety
 
     if thisfile[-3:].upper() == "SVG":
-        ir = drawsvg(thisfile = mypath + thisfile)   
+        drawsvg(thisfile = mypath + thisfile)   
     elif thisfile[-3:].upper() in("NGC",".NC","ODE"):
-        ir = drawngc(thisfile = mypath + thisfile)
+        drawngc(thisfile = mypath + thisfile)
     else:
         print("")
         print("Missing/incorrect file ({})".format(mypath + thisfile))
-        print("'svg' or 'nc,ngc,gcode' files only")
+        print("Selected 'svg' or 'nc,ngc,gcode' files only")
         return()
     
-    # bottom of drawing area,not drawing
+    # bottom of page, not the drawing
     offsetx = oox
-    offsety = ooy
+    offsety = ooy 
     
     endtime = datetime.now()
 
     drawstr = ""
     if plotfname:
-        drawstr += "File " + thisfile + "    "
+        drawstr += "File: " + thisfile + "    "
 
     if plotdist:
-        drawstr += "Dist. " + str(round(Dist * stepsize[0] / 1000,3))+ "m" + "    "
+        drawstr += "Distance: " + str(round(Dist * stepsize[0] / 1000,3))+ "m" + "    "
 
     if plottime:
         tm = str((endtime  - starttime)).split(".")
-        drawstr += "Time " + str(tm[0])
+        drawstr += "Time taken: " + str(tm[0])
 
     if len(drawstr) > 0:
         draw_str(drawstr)

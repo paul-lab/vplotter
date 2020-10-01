@@ -1,11 +1,13 @@
 <HTML>
 <HEAD>
 <script>
+function pg_refresh(){
+	location.reload();
+	return false;
+}
 
 function pg_update(){
-	//location.reload();
-	//return false;
-	//alert("bet");
+
 	drw_cont = document.getElementById('drw_cont').value/4;
 	document.getElementById('lbl_drw_cont').innerHTML =drw_cont;
 
@@ -18,12 +20,25 @@ function pg_update(){
 	rpt_hatch = document.getElementById('rpt_hatch').value;
 	document.getElementById('lbl_rpt_hatch').innerHTML =rpt_hatch;
 
+	cny_min = document.getElementById('cny_min').value;
+	document.getElementById('lbl_cny_min').innerHTML =cny_min;
 
-	longstr = "python -O "
-	longstr += " drawcont="+ drw_cont;
-	longstr += " drawhatch="+ drw_hatch;
-	longstr += " repeatcont="+ rpt_cont;
-	longstr += " repeathatch="+ rpt_hatch;
+	cny_max = document.getElementById('cny_max').value;
+	document.getElementById('lbl_cny_max').innerHTML =cny_max
+
+	img_res = document.getElementById('img_res').value;
+	img_blur = document.getElementById('img_blur').value;
+
+	longstr = 'python -c "from linedraw import *; print(vectorise(""snapshot"" '
+	longstr += ", resolution='"+ img_res +"'";
+	longstr += ", draw_contours="+ drw_cont;
+	longstr += ", draw_hatch="+ drw_hatch;
+	longstr += ", repeat_contours="+ rpt_cont;
+	longstr += ", repeat_hatch="+ rpt_hatch;
+	longstr += ", cannymin="+ cny_min;
+	longstr += ", cannymax="+ cny_max;
+	longstr += ", blur="+ img_blur;
+	longstr += ',))"'
 	document.getElementById('pycmd').value= longstr;
 	//alert(	drw_cont);
 }
@@ -33,14 +48,40 @@ function pg_update(){
 <body>
 <table border=1>
 	<tr>
-		<td>Draw<br>
-			<label id="lbl_drw_cont"> &nbsp; &nbsp; &nbsp;</label><input type="range" id="drw_cont" name="vol" min="0" max="12" onchange="pg_update();"><br>
-			<label id="lbl_drw_hatch">-</label><input type="range" id="drw_hatch" name="vol" min="0" max="50" onchange="pg_update();"><br>
-			Repeat<br>
-			<label id="lbl_rpt_cont">-</label><input type="range" id="rpt_cont" name="vol" min="0" max="10"onchange="pg_update();"><br>
-			<label id="lbl_rpt_hatch">-</label><input type="range" id="rpt_hatch" name="vol" min="0" max="10" onchange="pg_update();"><br>
+		<td>Draw (Contours/Hatch)<br>
+			<label id="lbl_drw_cont"> &nbsp; &nbsp; &nbsp;</label><input type="range" id="drw_cont" value=4 min="0" max="12" onchange="pg_update();"><br>
+			<label id="lbl_drw_hatch">-</label><input type="range" id="drw_hatch" value=0  min="0" max="50" onchange="pg_update();"><br>
 
-			<input  class="btn" type="submit"  onclick="pg_update();" value="Update" />
+			<br>Repeat (Contours/Hatch)<br>
+			<label id="lbl_rpt_cont">-</label><input type="range" id="rpt_cont" value=1 min="1" max="10"onchange="pg_update();"><br>
+			<label id="lbl_rpt_hatch">-</label><input type="range" id="rpt_hatch"value=1 min="1" max="10" onchange="pg_update();"><br>
+			<br>Size Blur<br>
+			<select id="img_res" value=0 onchange="pg_update();" >
+				<option value="A0">A0</option>
+				<option value="A6">A6</option>
+				<option value="A5">A5</option>
+				<option value="A4">A4</option>
+				<option value="A3">A3</option>
+				<option value="A2">A2</option>
+				<option value="A1">A1</option>
+				<option value="2A0">2A0</option>
+				<option value="4A0">4A0</option>
+			</select>
+			<select id="img_blur" value=0 onchange="pg_update();">
+				<option value="0">0</option>
+				<option value="1">1</option>
+				<option value="3">3</option>
+				<option value="5">5</option>
+				<option value="7">7</option>
+				<option value="9">9</option>
+			</select>
+
+			<br><br>Canny (min/max)<br>
+			<label id="lbl_cny_min">-</label><input type="range" id="cny_min"  value=50 min="0" max="256"onchange="pg_update();"><br>
+			<label id="lbl_cny_max">-</label><input type="range" id="cny_max"  value = 200 min="0" max="256" onchange="pg_update();"><br>
+
+			<br><input  class="btn" type="submit"  onclick="pg_update();" value="Update" /> &nbsp; &nbsp;
+			<input  class="btn" type="submit"  onclick="pg_refresh();" value="Refresh" />
 		</td>
 		<td>
 			<img width=320 src="images/snapshot.jpg">
