@@ -43,19 +43,21 @@ function pg_update(){
 	//alert(	drw_cont);
 }
 
+
 </script>
 </HEAD
 <body>
 <table border=1>
 	<tr>
-		<td>Draw (Contours/Hatch)<br>
-			<label id="lbl_drw_cont"> &nbsp; &nbsp; &nbsp;</label><input type="range" id="drw_cont" value=4 min="0" max="12" onchange="pg_update();"><br>
+		<td rowspan=2><b>Draw</b> (Contours/Hatch)<br>
+			<label id="lbl_drw_cont"></label><input type="range" id="drw_cont" value=4 min="0" max="12" onchange="pg_update();"><br>
 			<label id="lbl_drw_hatch">-</label><input type="range" id="drw_hatch" value=0  min="0" max="50" onchange="pg_update();"><br>
 
-			<br>Repeat (Contours/Hatch)<br>
+			<br><b>Repeat</b> (Contours/Hatch)<br>
 			<label id="lbl_rpt_cont">-</label><input type="range" id="rpt_cont" value=1 min="1" max="10"onchange="pg_update();"><br>
 			<label id="lbl_rpt_hatch">-</label><input type="range" id="rpt_hatch"value=1 min="1" max="10" onchange="pg_update();"><br>
-			<br>Size Blur<br>
+
+			<br><b>Size</b>
 			<select id="img_res" value=0 onchange="pg_update();" >
 				<option value="A0">A0</option>
 				<option value="A6">A6</option>
@@ -67,6 +69,7 @@ function pg_update(){
 				<option value="2A0">2A0</option>
 				<option value="4A0">4A0</option>
 			</select>
+			<br><br><b>Blur</b>
 			<select id="img_blur" value=0 onchange="pg_update();">
 				<option value="0">0</option>
 				<option value="1">1</option>
@@ -76,7 +79,7 @@ function pg_update(){
 				<option value="9">9</option>
 			</select>
 
-			<br><br>Canny (min/max)<br>
+			<br><br><b>Canny</b> (min/max)<br>
 			<label id="lbl_cny_min">-</label><input type="range" id="cny_min"  value=50 min="0" max="256"onchange="pg_update();"><br>
 			<label id="lbl_cny_max">-</label><input type="range" id="cny_max"  value = 200 min="0" max="256" onchange="pg_update();"><br>
 
@@ -85,22 +88,17 @@ function pg_update(){
 		</td>
 		<td>
 			<img width=320 src="images/snapshot.jpg">
+			<br><br><br>
+			<img  width=320 src="images/snapshot-lines.jpg">
 		</td>
-		<td colspan=2 rowspan=2>
+		<td rowspan=2>
 			<img width=320 src="images/snapshot.svg">
 		</td>
 	</tr>
-	<tr>
-		<td>
 
-		</td>
-		<td>
-			<img  width=320 src="images/snapshot-lines.jpg">
-		</td>
-
-	</tr>
 
 </table>
-<input id=pycmd size=125></input>
+
+<textarea id=pycmd rows=2 cols = 110></textarea>
 </body>
 </HTML>

@@ -1,6 +1,6 @@
 #############################################################################
 '''
-    This software is released under a variant of the MIT licence  
+    This software is released under the MIT licence  
 
     Please note that imported libraries may have different licences
 '''
@@ -10,43 +10,48 @@
  What this program does
     1. Accepts the following cmd line rguments
         -file [filename] (will prompt for filename of not provided.)
+        -stepper [0.2S|0.2D|0.1I] (default 0.2D)
+					 Single step 200/r
+ 					 Single step 200/r but more torque
+					 Interleave (Half steps) 400/r also more torque
+
         -paper [A6|A5|A4|A3|A2|A1|A0|2A0|4A0] (Default A4 paper size)
         -maxw [n] (defaults as coded 800mm between motor centre)
         -maxh [n] (defaults as coded 960 to calibration point )
         -fname [True|False] (defaults to False. Plots the filename)
         -dist [True|False] (defaults to False. Plots the distance the pen moved if True)
         -time [True|False] (defaults to False. Plots the time taken to plot if True)
+        -offset [n] vertical offset of the filename,distance or time in mm.
+             positive values will lift and negative will drop the text 
 
             (-fname, dist & time are plotted in that order
             at the bottom left of the drawing area/paper)
             
-    3. Calibrates the plotter before each drawing (at the bottom and again
-        at the origin, bottom left, of the drawing area.
-        
-    4. If the image is not portrait, then rotate it.
+    3. Calibrates the plotter before each drawing.
     
-    5. The SVG/Gcode file from the images folder is scaled to 90% of the
+    4. The SVG/Gcode file from the images folder is scaled to 90% of the
         selected paper Size and motor step size to fit the entire image
         in the drawing area. I work arse about face with the step size,
         but that is how my head works. It is then:
         
-    6. It is then Plotted in the centre of the MaxW & MaxH rectangle (portrait)
+    5. It is then Plotted in the centre of the MaxW & MaxH rectangle (portrait)
     
-    7. If enabled, filename, distance moved and time taken are plotted
+    6. If enabled, filename, distance moved and time taken are plotted
         at the origin (this is too small when using a sharpie/pencil,
         adjust the multiplier, scale, in the draw_str() function, or
         .upper() the text)
         
-    8. The motors are released
+    7. The motors are released
 
-    9. When run in ___debug___ mode the image is plotted using Turtle
+    8. When run in ___debug___ mode the image is plotted using Turtle
         (you may need to adjust the scaling in the plot_pair function)
         svg files will be upside down
         
-   10. When run with -O, output will be sent to the Motor Shield to plot
+    9. When run with 'python -O', output will be sent to the Motor Shield to plot, otherwise
+         a turtle image is drawn.
 
-   11. There is very little bounds checking and almost no error trapping
-       I will leave this to you as an exercise.
+   10. There is very little bounds checking and almost no error trapping
+       I will leave this to you to address.
 
 
  A few points:
@@ -168,7 +173,9 @@ Bill Of Materials
 Time (Far more time than you think)
 '''
 
-#Imports
+########################################################################
+################################# Imports ##############################
+# 
 
 import time
 import math
@@ -185,7 +192,7 @@ from datetime import datetime
 
 import pigpio
 
-# if no -O draw using turtle
+# if not 'python3 -O' draw using turtle
 if __debug__:
     import turtle
     if environ.get('DISPLAY','') == '':
@@ -225,6 +232,7 @@ MaxH = 980
 '''
 paper = {'A6':[105,148],'A5':[148,210], 'A4':[210,297], 'A3': [297,420], 'A2':[420,594],'A1':[594,841],'A0':[841,1190],'2A0':[1189,1682],'4A0':[1682,2378]}
 
+steppersteps = {'0.2S': [0.2,STEPPER.SINGLE], '0.2D':[0.2,STEPPER.DOUBLE], '0.1I':[0.1,STEPPER.INTERLEAVE]} 
 '''
 G2 pul1ey = 20 teeth at 2mm pitch = 40mm diameter meaning One rotation = 40mm
 This give us 40/200 = mm/step for each stepstyle avilable on the Motor Hat/Bonnet
@@ -238,12 +246,13 @@ In reality there is no real advantage to using a smaller stepsize than Half step
 in this setup all it does is dramaticlly increase the time taken to draw anything.
 
 obviously when coding/checking/testing, the larger the stepsize,
- the sooner you get there, but remember that generally, the larger the step, the lower the torque
+ the sooner you get there, but remember that generally,
+ the larger the step, the lower the torque
 '''
 if not __debug__:
     #stepsize = [0.2,STEPPER.SINGLE]         # Single step 200/r
-    #stepsize = [0.2,STEPPER.DOUBLE]         # Single step 200/r but more torque
-    stepsize = [0.1,STEPPER.INTERLEAVE]     # Interleave (Half steps) 400/r also more torque
+    stepsize = [0.2,STEPPER.DOUBLE]         # Single step 200/r but more torque
+    #stepsize = [0.1,STEPPER.INTERLEAVE]     # Interleave (Half steps) 400/r also more torque
     #stepsize = [0.025,STEPPER.MICROSTEP]    # Microsteps 1600/r 
 else:
     stepsize = [0.2,1]
@@ -256,13 +265,14 @@ else:
 '''
     Offset from the border to the canvas to the edges of the actual drawing area as well as
     the last length of each of the arms of the V.
+    lastxy  scaled steps
     Dist =  The total distance the pen moves (includes Pen-up motion)
     drawing_width, drawing_height Drawing area width and height
 '''
 offsetx = 0
 offsety = 0
 lastlen = [0,0]
-lastxy = [0,0]
+lastxy = [0,0]     
 Dist = 0
 drawing_width = 0
 drawing_height = 0
@@ -271,7 +281,9 @@ lastPenup = False
 
 '''
     Create a default stepper motor object, no changes to I2C address or frequency
-    If in debug mode, (not using python -O), we dont bother as we are going to use the turtle canvas.
+    If in debug mode, (not using python -O), we dont bother as we are going to use
+    the turtle canvas.
+    Obviously if all references to turtle can be removed if you feel the need.
 '''
 if not __debug__:
     kit = MotorKit()
@@ -401,11 +413,11 @@ def drawngc(thisfile):
     x = 0.0
     y = 0.0
     #z = 0.0
-    #r = 0.0
+    r = 0.0
     i = 0.0
     j = 0.0
-    lastx = 0.0
-    lasty = 0.0
+    #lastx = 0.0
+    #lasty = 0.0
 
     print ("Starting to draw...")
     
@@ -429,8 +441,11 @@ def drawngc(thisfile):
                 i = float(p[1:]) * image_ratio  / stepsize[0]      # x offset to center
             elif pkey == "J":
                 j = float(p[1:]) * image_ratio  / stepsize[0]     # y offset to centre
-            #elif pkey == "R":
-            #    r = float(p[1:]) * image_ratio       # radius of arc
+            elif pkey == "R":
+                r = float(p[1:]) * image_ratio       # radius of arc                
+            #elif pkey == "Z":
+            #    z = float(p[1:] 
+
 
 
         # we need at least x & Y for all "G" codes otherwise we just skip the line
@@ -441,19 +456,15 @@ def drawngc(thisfile):
                     continue
              
         '''
-        The pen is UP for moves/fast traverse, othewise it is drawing
+        The pen is UP for moves/fast traverse G00, othewise it is drawing.
         Depending on how/where the G-Code was created, this sometimes adds
         unwanted lines to the drawing. It is worth checking.
         Explicit Laser OFF/ON are taken as Explicit Pen UP/DOWN
         '''
         if line[0] in("G00", "M05"):    # Jog or explicit laser OFF
-            PenUp=True
-        elif line[0] == "M03":         # Explicit laser ON
-            PenUp=False
-        else:
-            PenUp=False
-
-        set_pen_up(PenUp)
+            set_pen_up(True)
+        else:                           # Explicit laser ON(M03) or any other command
+            set_pen_up(False)
 
         # ????
         #print (line)
@@ -465,13 +476,13 @@ def drawngc(thisfile):
         # An Arc, Clockwise or Anti-clockwise. We only draw a single arc up to 360 degrees
         if line[0] in ("G02", "G03"): 
             # only cater for I & J curves (they are also the most common)
-            if i == 0 and j == 0:
+            if r != 0 and i == 0 and j == 0:
                 print ("Unable to process line", line)
                 plot_pair(x,y)
                 continue
 
             #remember I,J are the centre of the circle/arc.
-            converted =  G0203(line[0], x, y, i, j, r, lastx, lasty)
+            converted =  G0203(line[0], x, y, i, j, 0, lastx, lasty)
 
             for G01 in converted:
                 xy = G01.split(",")
@@ -770,7 +781,9 @@ def adjust_speed(this_step,thisleg,step_delay,line_segment=False):
         increase the # steps between increments (this_step % ?? == 0:) below
 
     One of the motors I have, chokes quicker than the other, but this seems
-        to be OK for me with interleave steps. (higher torque) 
+        to be OK for me with interleave steps. (higher torque)
+    Also as odd as it seems even at full speed, rapid changes in direction
+        do not seem to bother the motor/cause it to choke??? 
     '''
     
     wMin = 0.013        # shortest sleep, fastest movement
@@ -1190,9 +1203,9 @@ def draw_str(this_str):
         ["~",24,3,6,3,8,4,11,6,12,8,12,10,11,14,8,16,7,18,7,20,8,21,10,-1,-1,3,8,4,10,6,11,8,11,10,10,14,7,16,6,18,6,20,7,21,10,21,12]    ]
     
   
-    # we are just negating stepsize here. (multiply by 2 to double the size)
-    scale = stepsize[0] * 10 * 1
-    
+    # we are just negating stepsize here and resolving to 3mm high characters (multiply by 2 to double the size)
+    scale = 1 / (stepsize[0] * 10) * 1
+   
     xpos = 0
     for ch in this_str:
         gotpair = ord (ch)
@@ -1240,7 +1253,7 @@ def draw_protractor():
     t.penup()
 
 def main():
-    global MaxW,MaxH
+    global MaxW,MaxH, stepsize
     global drawing_width,drawing_height,offsetx,offsety
 
     hardware_reset()
@@ -1248,6 +1261,7 @@ def main():
     set_pen_up(True)
     
     parser = argparse.ArgumentParser()
+    parser.add_argument('-stepper')
     parser.add_argument('-file')
     parser.add_argument('-paper')
     parser.add_argument('-maxw')
@@ -1255,6 +1269,7 @@ def main():
     parser.add_argument('-dist')
     parser.add_argument('-time')
     parser.add_argument('-fname')
+    parser.add_argument('-offset')
      
     args = parser.parse_args()
 
@@ -1265,10 +1280,13 @@ def main():
         onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath,f))]
         print (onlyfiles)
         thisfile = input ("Which file? ")
-        
+    
+    if args.stepper:
+        stepsize = steppersteps[args.stepper]
+
     # make sure there is a border (stops the pen/lifter from snagging)
     if args.paper:   
-        drawing_width = int(paper[args.paper][0] * 0.9)  
+       	drawing_width = int(paper[args.paper][0] * 0.9)  
         drawing_height = int(paper[args.paper][1] * 0.9)
     else:
         drawing_width = int(paper['A4'][0] * 0.9)
@@ -1303,8 +1321,15 @@ def main():
             plottime = False
     else:
         plottime = False
-             
-         
+
+    if args.offset:
+        try:
+            offset = round(float(args.offset)/ stepsize[0])
+        except ValueError:
+            offset = 0
+    else:
+        offset = 0
+ 
     init()
     starttime = datetime.now()
     oox = offsetx
@@ -1322,7 +1347,7 @@ def main():
     
     # bottom of page, not the drawing
     offsetx = oox
-    offsety = ooy 
+    offsety = ooy + offset
     
     endtime = datetime.now()
 
@@ -1355,7 +1380,7 @@ if __name__ == "__main__":
 
     try:
         main()
-        pass
+        #pass
     except () as e:
         # Make sure the motors are not energised if the code fails,
         # or we stop it with a ^C.
