@@ -1,7 +1,7 @@
 
- What this program does
+ What this program does:
     1. Accepts the following cmd line rguments
-        -file [filename] (will prompt for filename of not provided.)
+        -file [filename] (will prompt for filename if not provided.)
         -paper [A6|A5|A4|A3|A2|A1|A0|2A0|4A0] (Default A4 paper size)
         -maxw [n] (defaults as coded 800mm between motor centre)
         -maxh [n] (defaults as coded 960 to calibration point )
